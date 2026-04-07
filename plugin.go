@@ -35,7 +35,7 @@ func New(settings any) (register.LinterPlugin, error) {
 }
 
 func (p *Plugin) BuildAnalyzers() ([]*analysis.Analyzer, error) {
-	a := newAnalyzer(p.settings)
+	a := NewAnalyzer(p.settings)
 	return []*analysis.Analyzer{a}, nil
 }
 

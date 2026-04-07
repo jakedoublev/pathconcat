@@ -13,7 +13,12 @@ import (
 	"golang.org/x/tools/go/ast/inspector"
 )
 
-func newAnalyzer(settings Settings) *analysis.Analyzer {
+// Analyzer is the default pathconcat analyzer with no ignore-strings configured.
+// Use NewAnalyzer to customize settings.
+var Analyzer = NewAnalyzer(Settings{})
+
+// NewAnalyzer creates a pathconcat analyzer with the given settings.
+func NewAnalyzer(settings Settings) *analysis.Analyzer {
 	r := &runner{settings: settings}
 	return &analysis.Analyzer{
 		Name:     "pathconcat",
