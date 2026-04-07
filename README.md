@@ -34,7 +34,7 @@ Requires [golangci-lint](https://golangci-lint.run) v2 with the [module plugin s
 version: v2.8.0
 plugins:
   - module: github.com/jakedoublev/pathconcat
-    version: v0.1.0
+    version: v0.3.0
 ```
 
 ### 2. Add to `.golangci.yaml`
@@ -53,6 +53,8 @@ linters:
           ignore-strings:
             - "/attr/"
             - "/value/"
+          # Optional: flag "https://" + host scheme concatenation
+          # check-scheme-concat: true
 ```
 
 ### 3. Build and run
