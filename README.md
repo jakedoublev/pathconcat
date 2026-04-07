@@ -21,7 +21,7 @@ The suggested function depends on file context:
 ### Built-in suppression
 
 - **Connection strings**: `fmt.Sprintf("postgres://%s:%s@%s/%s", ...)` is not flagged
-- **Scheme prefixes**: `"https://" + host` is not flagged
+- **Scheme prefixes**: `"https://" + host` is not flagged (unless `check-scheme-concat` is enabled)
 - **Ignored strings**: Configurable substrings (e.g. `/attr/`, `/value/`) that indicate domain-specific identifier construction rather than path building
 
 ## Installation
@@ -64,9 +64,10 @@ golangci-lint custom     # builds ./custom-gcl with the plugin
 
 ## Configuration
 
-| Setting | Type | Description |
-|---------|------|-------------|
-| `ignore-strings` | `[]string` | Substrings that suppress diagnostics. If any string literal in a concatenation chain or `fmt.Sprintf` format string contains one of these, the finding is skipped. |
+| Setting | Type | Default | Description |
+|---------|------|---------|-------------|
+| `ignore-strings` | `[]string` | `[]` | Substrings that suppress diagnostics. If any string literal in a concatenation chain or `fmt.Sprintf` format string contains one of these, the finding is skipped. |
+| `check-scheme-concat` | `bool` | `false` | When true, also flags scheme prefix concatenation like `"https://" + host`. By default these are not flagged. |
 
 ## Suppressing individual findings
 

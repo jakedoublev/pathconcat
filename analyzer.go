@@ -71,6 +71,7 @@ func (r *runner) checkBinaryConcat(pass *analysis.Pass, expr *ast.BinaryExpr, re
 
 	// Check if any element in the chain is the literal "/".
 	hasSlashSep := false
+	hasScheme := false
 	for _, node := range chain {
 		if lit, ok := node.(*ast.BasicLit); ok && lit.Kind == token.STRING {
 			val, err := strconv.Unquote(lit.Value)
@@ -79,21 +80,23 @@ func (r *runner) checkBinaryConcat(pass *analysis.Pass, expr *ast.BinaryExpr, re
 			}
 			if val == "/" {
 				hasSlashSep = true
-				break
+			}
+			if strings.Contains(val, "://") {
+				hasScheme = true
 			}
 		}
 	}
+
+	// When check-scheme-concat is enabled, also flag "https://" + host patterns
+	// even without a bare "/" separator.
 	if !hasSlashSep {
-		return
+		if !r.settings.CheckSchemeConcat || !hasScheme {
+			return
+		}
 	}
 
 	// Suppress: chains containing ignored string literals.
 	if r.containsIgnoredString(chain) {
-		return
-	}
-
-	// Suppress: scheme prefix like "https://" + host without further "/" concat.
-	if r.isSchemePrefix(chain) {
 		return
 	}
 
@@ -225,22 +228,6 @@ func (r *runner) containsIgnoredString(chain []ast.Expr) bool {
 	return false
 }
 
-// isSchemePrefix returns true if the chain is "https://" + host or
-// "http://" + host without a subsequent "/" separator.
-func (r *runner) isSchemePrefix(chain []ast.Expr) bool {
-	if len(chain) != 2 {
-		return false
-	}
-	lit, ok := chain[0].(*ast.BasicLit)
-	if !ok || lit.Kind != token.STRING {
-		return false
-	}
-	val, err := strconv.Unquote(lit.Value)
-	if err != nil {
-		return false
-	}
-	return strings.HasPrefix(val, "http://") || strings.HasPrefix(val, "https://")
-}
 
 // sprintfPathPattern matches format strings like "%s/%s" or "%v/%s".
 var sprintfPathPattern = regexp.MustCompile(`%[svdqxX]\s*/\s*%[svdqxX]`)

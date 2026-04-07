@@ -23,6 +23,21 @@ func TestPathConcat(t *testing.T) {
 	analysistest.Run(t, testdataDir(t), analyzers[0], "pathconcat")
 }
 
+func TestCheckSchemeConcat(t *testing.T) {
+	a := NewAnalyzer(Settings{CheckSchemeConcat: true})
+
+	analysistest.Run(t, testdataDir(t), a, "pathconcat_scheme")
+}
+
+func TestCheckSchemeConcatWithIgnoreStrings(t *testing.T) {
+	a := NewAnalyzer(Settings{
+		CheckSchemeConcat: true,
+		IgnoreStrings:     []string{"/attr/"},
+	})
+
+	analysistest.Run(t, testdataDir(t), a, "pathconcat_scheme_ignored")
+}
+
 func testdataDir(t *testing.T) string {
 	t.Helper()
 

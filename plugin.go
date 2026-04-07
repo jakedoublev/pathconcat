@@ -17,6 +17,10 @@ type Settings struct {
 	// Useful for domain-specific identifiers built with "/" that are not
 	// file or URL paths (e.g. "/attr/", "/value/", "::").
 	IgnoreStrings []string `json:"ignore-strings"`
+
+	// CheckSchemeConcat flags scheme prefix concatenation like "https://" + host.
+	// By default these are suppressed. Set to true to flag them.
+	CheckSchemeConcat bool `json:"check-scheme-concat"`
 }
 
 // Plugin implements register.LinterPlugin.
