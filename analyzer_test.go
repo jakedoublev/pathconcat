@@ -38,6 +38,18 @@ func TestCheckSchemeConcatWithIgnoreStrings(t *testing.T) {
 	analysistest.Run(t, testdataDir(t), a, "pathconcat_scheme_ignored")
 }
 
+func TestRequirePathContext(t *testing.T) {
+	a := NewAnalyzer(Settings{RequirePathContext: true})
+
+	analysistest.Run(t, testdataDir(t), a, "pathconcat_context")
+}
+
+func TestBackslashConcat(t *testing.T) {
+	a := NewAnalyzer(Settings{})
+
+	analysistest.Run(t, testdataDir(t), a, "pathconcat_backslash")
+}
+
 func testdataDir(t *testing.T) string {
 	t.Helper()
 

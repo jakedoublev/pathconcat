@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"golang.org/x/tools/go/analysis"
+	"golang.org/x/tools/go/analysis/passes/buildssa"
 	"golang.org/x/tools/go/analysis/passes/inspect"
 	"golang.org/x/tools/go/ast/inspector"
 )
@@ -20,10 +21,14 @@ var Analyzer = NewAnalyzer(Settings{})
 // NewAnalyzer creates a pathconcat analyzer with the given settings.
 func NewAnalyzer(settings Settings) *analysis.Analyzer {
 	r := &runner{settings: settings}
+	requires := []*analysis.Analyzer{inspect.Analyzer}
+	if settings.RequirePathContext {
+		requires = append(requires, buildssa.Analyzer)
+	}
 	return &analysis.Analyzer{
 		Name:     "pathconcat",
 		Doc:      "Detects string-based path/URL concatenation; suggests filepath.Join, path.Join, or url.JoinPath",
-		Requires: []*analysis.Analyzer{inspect.Analyzer},
+		Requires: requires,
 		Run:      r.run,
 	}
 }
@@ -69,7 +74,7 @@ func (r *runner) checkBinaryConcat(pass *analysis.Pass, expr *ast.BinaryExpr, re
 	// Collect all literals in the concatenation chain.
 	chain := flattenAddChain(expr)
 
-	// Check if any element in the chain is the literal "/".
+	// Check if any element in the chain is a path separator literal ("/" or "\\").
 	hasSlashSep := false
 	hasScheme := false
 	for _, node := range chain {
@@ -78,7 +83,7 @@ func (r *runner) checkBinaryConcat(pass *analysis.Pass, expr *ast.BinaryExpr, re
 			if err != nil {
 				continue
 			}
-			if val == "/" {
+			if val == "/" || val == "\\" {
 				hasSlashSep = true
 			}
 			if strings.Contains(val, "://") {
@@ -88,7 +93,7 @@ func (r *runner) checkBinaryConcat(pass *analysis.Pass, expr *ast.BinaryExpr, re
 	}
 
 	// When check-scheme-concat is enabled, also flag "https://" + host patterns
-	// even without a bare "/" separator.
+	// even without a bare separator.
 	if !hasSlashSep {
 		if !r.settings.CheckSchemeConcat || !hasScheme {
 			return
@@ -100,10 +105,22 @@ func (r *runner) checkBinaryConcat(pass *analysis.Pass, expr *ast.BinaryExpr, re
 		return
 	}
 
+	// When require-path-context is enabled, only flag if the result flows
+	// into a known path/URL consumer (via SSA referrer analysis).
+	var suggestion string
+	if r.settings.RequirePathContext {
+		kind := checkPathContext(pass, expr.Pos(), expr.End())
+		if kind == consumerNone {
+			return
+		}
+		suggestion = suggestFromContext(kind)
+	} else {
+		suggestion = suggestFunc(pass, expr)
+	}
+
 	// Mark all sub-expressions as reported.
 	markChain(expr, reported)
 
-	suggestion := suggestFunc(pass, expr)
 	pass.Report(analysis.Diagnostic{
 		Pos:     expr.Pos(),
 		End:     expr.End(),
@@ -147,7 +164,17 @@ func (r *runner) checkSprintfCall(pass *analysis.Pass, call *ast.CallExpr) {
 		return
 	}
 
-	suggestion := suggestFunc(pass, call)
+	var suggestion string
+	if r.settings.RequirePathContext {
+		kind := checkPathContext(pass, call.Pos(), call.End())
+		if kind == consumerNone {
+			return
+		}
+		suggestion = suggestFromContext(kind)
+	} else {
+		suggestion = suggestFunc(pass, call)
+	}
+
 	pass.Report(analysis.Diagnostic{
 		Pos:     call.Pos(),
 		End:     call.End(),
@@ -175,11 +202,21 @@ func (r *runner) checkStringsJoin(pass *analysis.Pass, call *ast.CallExpr) {
 		return
 	}
 
-	if val != "/" {
+	if val != "/" && val != "\\" {
 		return
 	}
 
-	suggestion := suggestFunc(pass, call)
+	var suggestion string
+	if r.settings.RequirePathContext {
+		kind := checkPathContext(pass, call.Pos(), call.End())
+		if kind == consumerNone {
+			return
+		}
+		suggestion = suggestFromContext(kind)
+	} else {
+		suggestion = suggestFunc(pass, call)
+	}
+
 	pass.Report(analysis.Diagnostic{
 		Pos:     call.Pos(),
 		End:     call.End(),

@@ -21,6 +21,12 @@ type Settings struct {
 	// CheckSchemeConcat flags scheme prefix concatenation like "https://" + host.
 	// By default these are suppressed. Set to true to flag them.
 	CheckSchemeConcat bool `json:"check-scheme-concat"`
+
+	// RequirePathContext only flags concatenation when the result demonstrably
+	// flows into a known path/URL-consuming function (os.Open, http.Get, etc.).
+	// Uses SSA analysis to follow value flow. Reduces false positives at the
+	// cost of missing indirect usage.
+	RequirePathContext bool `json:"require-path-context"`
 }
 
 // Plugin implements register.LinterPlugin.
