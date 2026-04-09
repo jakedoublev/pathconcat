@@ -6,17 +6,16 @@ A [golangci-lint](https://golangci-lint.run) module plugin that detects string-b
 
 | Pattern | Example | Suggestion |
 |---------|---------|------------|
-| String concat with `"/"` | `a + "/" + b` | `path.Join(a, b)` |
+| String concat with `"/"` or `"\\"` | `a + "/" + b` | `path.Join(a, b)` |
 | `fmt.Sprintf` with path separators | `fmt.Sprintf("%s/%s", a, b)` | `path.Join(a, b)` |
-| `strings.Join` with `"/"` | `strings.Join(parts, "/")` | `path.Join(parts...)` |
+| `strings.Join` with `"/"` or `"\\"` | `strings.Join(parts, "/")` | `path.Join(parts...)` |
 
 ### Smart suggestions
 
-The suggested function depends on file context:
+The suggested function depends on context:
 
-- **`url.JoinPath`** if the file imports `net/url` or `net/http`, or the concatenation contains `http://`/`https://`
-- **`filepath.Join`** if the file imports `path/filepath` or `os`
-- **`path.Join`** otherwise
+- With `require-path-context`: derived from the consumer function's package (`os.Open` → `filepath.Join`, `http.Get` → `url.JoinPath`)
+- Without: inferred from file imports (`net/url` → `url.JoinPath`, `path/filepath` → `filepath.Join`, otherwise `path.Join`)
 
 ### Built-in suppression
 
@@ -55,6 +54,8 @@ linters:
             - "/value/"
           # Optional: flag "https://" + host scheme concatenation
           # check-scheme-concat: true
+          # Optional: only flag when result flows into os.Open, http.Get, etc.
+          # require-path-context: true
 ```
 
 ### 3. Build and run
@@ -70,6 +71,7 @@ golangci-lint custom     # builds ./custom-gcl with the plugin
 |---------|------|---------|-------------|
 | `ignore-strings` | `[]string` | `[]` | Substrings that suppress diagnostics. If any string literal in a concatenation chain or `fmt.Sprintf` format string contains one of these, the finding is skipped. |
 | `check-scheme-concat` | `bool` | `false` | When true, also flags scheme prefix concatenation like `"https://" + host`. By default these are not flagged. |
+| `require-path-context` | `bool` | `false` | When true, only flags concatenation when the result flows into a known path/URL-consuming function (`os.Open`, `http.Get`, `filepath.Join`, `url.Parse`, etc.). Uses SSA analysis. Reduces false positives at the cost of missing indirect usage. |
 
 ## Suppressing individual findings
 
